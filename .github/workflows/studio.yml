@@ -7,9 +7,10 @@ name: Studio
 # and the packaging contract on real artifacts.
 on:
   push:
-    branches: [studio, codex/maintenance-baseline]
+    branches: [studio, 'codex/maintenance-*']
   pull_request:
-    branches: [studio, codex/maintenance-baseline]
+    branches: [studio, 'codex/maintenance-*']
+  workflow_dispatch:
 
 permissions:
   contents: read
