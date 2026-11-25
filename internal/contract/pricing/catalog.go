@@ -31,6 +31,8 @@ type CatalogEntry struct {
 	// No vendor here serves prices over an API, so this date is all that stands
 	// between a price change and a readout that is quietly wrong.
 	CheckedOn string
+	// Historical preserves a previously published rate for recorded usage.
+	Historical bool
 }
 
 // deepseekPeak is the schedule DeepSeek publishes: peak on weekday mornings and
@@ -65,16 +67,15 @@ var chineseStatutoryHolidays = []string{
 	"2026-10-05", "2026-10-06", "2026-10-07",
 }
 
-// checkedOn is when the tables below were last read off the vendors' pages.
-const checkedOn = "2026-08-22"
+const longcatCheckedOn = "2026-11-25"
 
-// deepseekCheckedOn is when the DeepSeek rows were last read off that vendor's
-// page. Separate from checkedOn, because confirming one vendor's prices says
-// nothing about another's and a shared date would claim that it did.
+const mimoHistoricalCheckedOn = "2026-08-22"
+
+// deepseekCheckedOn is when the DeepSeek rows were last read off its pricing page.
 const deepseekCheckedOn = "2026-09-13"
 
 // mimoCheckedOn is when the V2.6 rows were read off the vendor's own docs.
-const mimoCheckedOn = "2026-10-06"
+const mimoCheckedOn = "2026-11-25"
 
 // googleCheckedOn is when the Gemini rows were read off Google's pricing page.
 const googleCheckedOn = "2026-10-17"
@@ -114,9 +115,8 @@ func OfficialProviderForEndpoint(baseURL string) string {
 	return officialEndpointHosts[strings.ToLower(u.Hostname())]
 }
 
-// OfficialCatalog is the built-in price book: the current generation of every
-// rate in officialRates, fingerprinted so a stored price can be recognised as
-// one of ours. User-custom prices always win over it.
+// OfficialCatalog returns the current and historical rates with fingerprints
+// for matching saved prices. User-custom prices always win over it.
 func OfficialCatalog() []CatalogEntry {
 	entries := officialCatalogRows()
 	for i := range entries {

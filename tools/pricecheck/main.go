@@ -116,12 +116,13 @@ func reportModel(s source, got published) verdict {
 	return differs
 }
 
-// reportCheckedOn says how stale each vendor's last human confirmation is. No
-// threshold: a number nobody chose is one nobody can defend, and the date is
-// what a reader needs to decide whether to go and look.
+// reportCheckedOn shows the oldest confirmation date among each vendor's active rates.
 func reportCheckedOn() {
 	oldest := map[string]string{}
 	for _, entry := range pricing.OfficialCatalog() {
+		if entry.Historical {
+			continue
+		}
 		if current, seen := oldest[entry.Provider]; !seen || entry.CheckedOn < current {
 			oldest[entry.Provider] = entry.CheckedOn
 		}

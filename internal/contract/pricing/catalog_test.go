@@ -66,7 +66,7 @@ func TestCatalogPricesHaveBeenCheckedRecently(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: CheckedOn %q is not YYYY-MM-DD", where, e.CheckedOn)
 		}
-		if on.Before(cutoff) {
+		if !e.Historical && on.Before(cutoff) {
 			stale = append(stale, where+" last checked "+e.CheckedOn)
 		}
 	}

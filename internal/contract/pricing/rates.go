@@ -44,6 +44,7 @@ type officialRateRow struct {
 	DocURL      string
 	Notes       string
 	CheckedOn   string
+	Historical  bool
 	// Rates is oldest first; the last entry is what this costs today.
 	Rates []rateGeneration
 }
@@ -99,12 +100,12 @@ var officialRates = []officialRateRow{
 	// CheckedOn earns its place here.
 	{
 		Provider: "longcat", Model: "LongCat-2.0", Currency: "CNY",
-		BillingMode: BillingModePAYG, DocURL: DocLongCatPricingCNY, Notes: "launch_discount_no_end_date", CheckedOn: checkedOn,
+		BillingMode: BillingModePAYG, DocURL: DocLongCatPricingCNY, Notes: "launch_discount_no_end_date", CheckedOn: longcatCheckedOn,
 		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.04, Input: 2, Output: 8, Currency: "CNY"}}},
 	},
 	{
 		Provider: "longcat", Model: "LongCat-2.0", Currency: "USD",
-		BillingMode: BillingModePAYG, DocURL: DocLongCatPricingUSD, Notes: "launch_discount_no_end_date", CheckedOn: checkedOn,
+		BillingMode: BillingModePAYG, DocURL: DocLongCatPricingUSD, Notes: "launch_discount_no_end_date", CheckedOn: longcatCheckedOn,
 		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.006, Input: 0.30, Output: 1.20, Currency: "USD"}}},
 	},
 
@@ -137,34 +138,37 @@ var officialRates = []officialRateRow{
 		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.20, Input: 2.00, Output: 12.00, Currency: "USD"}}},
 	},
 
-	// MiMo domestic PAYG; Token Plan bills the same rates as subscription_equivalent.
+	// Historical MiMo rates support pricing of recorded usage.
 	{
 		Provider: "mimo", Model: "mimo-v2.5-pro", Currency: "CNY",
-		BillingMode: BillingModePAYG, DocURL: DocMiMoPAYG, CheckedOn: checkedOn,
-		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.025, Input: 3, Output: 6, Currency: "CNY"}}},
+		BillingMode: BillingModePAYG, DocURL: DocMiMoPAYG, CheckedOn: mimoHistoricalCheckedOn,
+		Historical: true,
+		Rates:      []rateGeneration{{Base: RateCard{CacheHit: 0.025, Input: 3, Output: 6, Currency: "CNY"}}},
 	},
 	{
 		Provider: "mimo", Model: "mimo-v2.5", Currency: "CNY",
-		BillingMode: BillingModePAYG, DocURL: DocMiMoPAYG, CheckedOn: checkedOn,
-		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.02, Input: 1, Output: 2, Currency: "CNY"}}},
+		BillingMode: BillingModePAYG, DocURL: DocMiMoPAYG, CheckedOn: mimoHistoricalCheckedOn,
+		Historical: true,
+		Rates:      []rateGeneration{{Base: RateCard{CacheHit: 0.02, Input: 1, Output: 2, Currency: "CNY"}}},
 	},
-	// Not on the vendor's price page as of CheckedOn. Kept because removing a rate
-	// is what turns a still-configured model's cost silently into zero; a stale
-	// rate at least reads as a number somebody can question.
+	// The vendor's pricing page omits V2 Flash. Its last rate serves saved usage.
 	{
 		Provider: "mimo", Model: "mimo-v2-flash", Currency: "CNY",
-		BillingMode: BillingModePAYG, DocURL: DocMiMoPAYG, Notes: "not_on_vendor_page", CheckedOn: checkedOn,
-		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.07, Input: 0.70, Output: 2.10, Currency: "CNY"}}},
+		BillingMode: BillingModePAYG, DocURL: DocMiMoPAYG, Notes: "not_on_vendor_page", CheckedOn: mimoHistoricalCheckedOn,
+		Historical: true,
+		Rates:      []rateGeneration{{Base: RateCard{CacheHit: 0.07, Input: 0.70, Output: 2.10, Currency: "CNY"}}},
 	},
 	{
 		Provider: "mimo", Model: "mimo-v2.5-pro", Currency: "CNY",
-		BillingMode: BillingModeSubscriptionEquivalent, DocURL: DocMiMoTokenPlan, Notes: "payg_equivalent_not_plan_bill", CheckedOn: checkedOn,
-		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.025, Input: 3, Output: 6, Currency: "CNY"}}},
+		BillingMode: BillingModeSubscriptionEquivalent, DocURL: DocMiMoTokenPlan, Notes: "payg_equivalent_not_plan_bill", CheckedOn: mimoHistoricalCheckedOn,
+		Historical: true,
+		Rates:      []rateGeneration{{Base: RateCard{CacheHit: 0.025, Input: 3, Output: 6, Currency: "CNY"}}},
 	},
 	{
 		Provider: "mimo", Model: "mimo-v2.5", Currency: "CNY",
-		BillingMode: BillingModeSubscriptionEquivalent, DocURL: DocMiMoTokenPlan, Notes: "payg_equivalent_not_plan_bill", CheckedOn: checkedOn,
-		Rates: []rateGeneration{{Base: RateCard{CacheHit: 0.02, Input: 1, Output: 2, Currency: "CNY"}}},
+		BillingMode: BillingModeSubscriptionEquivalent, DocURL: DocMiMoTokenPlan, Notes: "payg_equivalent_not_plan_bill", CheckedOn: mimoHistoricalCheckedOn,
+		Historical: true,
+		Rates:      []rateGeneration{{Base: RateCard{CacheHit: 0.02, Input: 1, Output: 2, Currency: "CNY"}}},
 	},
 	{
 		Provider: "mimo", Model: "mimo-v2.6-pro", Currency: "CNY",
@@ -259,10 +263,8 @@ func officialRateRowsFor(provider, model, currency string) []officialRateRow {
 	return out
 }
 
-// CurrentRate is what a vendor's model costs in a currency today — the off-peak
-// card, which is what a caller charging one rate should quote. Nil when this
-// catalog prices neither. A model published under two billing modes quotes the
-// pay-as-you-go rate, which is the one an unsubscribed caller is charged.
+// CurrentRate returns the applicable pay-as-you-go base rate for a model and
+// currency. Historical models use the last published rate for saved usage.
 func CurrentRate(provider, model, currency string) *RateCard {
 	for _, row := range officialRateRowsFor(provider, model, currency) {
 		if row.BillingMode == BillingModeSubscriptionEquivalent {
@@ -346,6 +348,6 @@ func (r officialRateRow) entry(model string, current rateGeneration) CatalogEntr
 		Provider: r.Provider, Model: model, Currency: r.Currency,
 		CacheHit: current.Base.CacheHit, Input: current.Base.Input, Output: current.Base.Output,
 		Peak: peak, Window: r.Window, DocURL: r.DocURL,
-		BillingMode: r.BillingMode, Notes: r.Notes, CheckedOn: r.CheckedOn,
+		BillingMode: r.BillingMode, Notes: r.Notes, CheckedOn: r.CheckedOn, Historical: r.Historical,
 	}
 }

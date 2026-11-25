@@ -7,9 +7,9 @@ name: Studio
 # and the packaging contract on real artifacts.
 on:
   push:
-    branches: [studio]
+    branches: [studio, codex/maintenance-baseline]
   pull_request:
-    branches: [studio]
+    branches: [studio, codex/maintenance-baseline]
 
 permissions:
   contents: read
@@ -20,10 +20,15 @@ concurrency:
 
 jobs:
   frontend:
-    name: frontend-next
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os == 'ubuntu-latest' && 'frontend-next' || format('frontend-next ({0})', matrix.os) }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     defaults:
       run:
+        shell: bash
         working-directory: desktop/frontend-next
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

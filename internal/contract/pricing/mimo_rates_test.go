@@ -26,3 +26,27 @@ func TestMimoV26RatesFollowTheVendorPage(t *testing.T) {
 		}
 	}
 }
+
+func TestHistoricalMiMoCatalogRatesKeepTheirFingerprints(t *testing.T) {
+	cases := []struct {
+		model string
+		mode  string
+		rate  RateCard
+	}{
+		{"mimo-v2.5-pro", BillingModePAYG, RateCard{CacheHit: 0.025, Input: 3, Output: 6, Currency: "CNY"}},
+		{"mimo-v2.5", BillingModePAYG, RateCard{CacheHit: 0.02, Input: 1, Output: 2, Currency: "CNY"}},
+		{"mimo-v2-flash", BillingModePAYG, RateCard{CacheHit: 0.07, Input: 0.70, Output: 2.10, Currency: "CNY"}},
+		{"mimo-v2.5-pro", BillingModeSubscriptionEquivalent, RateCard{CacheHit: 0.025, Input: 3, Output: 6, Currency: "CNY"}},
+		{"mimo-v2.5", BillingModeSubscriptionEquivalent, RateCard{CacheHit: 0.02, Input: 1, Output: 2, Currency: "CNY"}},
+	}
+	for _, tc := range cases {
+		row, ok := LookupCatalog("mimo", tc.model, "CNY", tc.mode)
+		if !ok || !row.Historical || row.BillingMode != tc.mode || row.Fingerprint != PricingFingerprint(tc.rate) {
+			t.Errorf("%s (%s) lost its historical catalog rate: %+v", tc.model, tc.mode, row)
+		}
+	}
+	row, ok := LookupCatalog("mimo", "mimo-v2.6-pro", "CNY", BillingModePAYG)
+	if !ok || row.Historical {
+		t.Errorf("MiMo V2.6 Pro must be current: %+v", row)
+	}
+}
